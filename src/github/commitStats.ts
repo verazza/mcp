@@ -121,6 +121,8 @@ export async function analyzeCommitStats(
         repoName: commit.repository?.name ?? "unknown"
       }))
       .catch(error => {
+        console.error(`Workspace error for ${commit.url}: `, error);
+        return null;
       })
   );
 
@@ -152,7 +154,7 @@ export async function fetchCommitStats(
   username: string,
   repo: string,
   token: string,
-  commitLimit: number = 10 // デフォルト値
+  commitLimit: number = 20
 ): Promise<{ totalAdditions: number; totalDeletions: number }> {
   const headers = {
     Authorization: `token ${token} `,
@@ -161,7 +163,7 @@ export async function fetchCommitStats(
   };
 
   const commitsRes = await fetch(
-    `https://api.github.com/repos/${username}/${repo}/commits?per_page=${Math.min(commitLimit, 100)}`,
+    `https://api.github.com/repos/${username}/${repo}/commits?per_page=${Math.min(commitLimit, 50)}`,
     { headers }
   );
 
