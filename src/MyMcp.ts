@@ -29,7 +29,6 @@ export class MyMCP extends McpAgent {
       }
     );
 
-
     this.server.tool(
       'github_commit_stats',
       'GitHubユーザーの直近のコミット統計（追加・削除行数）を返す',
@@ -64,14 +63,21 @@ export class MyMCP extends McpAgent {
 
         // ① 今日のコミット取得
         const todayCommits = await fetchUserCommits(username, token, todayStart.toISOString());
+        const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+        // fetchUserCommits で取得後、さらにフィルタ
+        const trulyTodayCommits = todayCommits.filter(c => {
+          const commitDate = new Date(c.commit.author.date); // event.created_at を基準にしているのでこれを参照
+          return commitDate >= todayStart && commitDate <= todayEnd;
+        });
+
 
         let message = '';
-        if (todayCommits.length === 0) {
+        if (trulyTodayCommits.length === 0) {
           message += `ユーザー ${username} は今日はまだコミットしていません。\n`;
         } else {
-          message += `ユーザー ${username} は今日 ${todayCommits.length} 件のコミットをしました。\n`;
+          message += `ユーザー ${username} は今日 ${trulyTodayCommits.length} 件のコミットをしました。\n`;
 
-          const todayStats = await analyzeCommitStats(todayCommits, token);
+          const todayStats = await analyzeCommitStats(trulyTodayCommits, token);
           message += `追加行数: ${todayStats.totalAdditions}, 削除行数: ${todayStats.totalDeletions}\n`;
           message += `リポジトリ別:\n`;
           for (const [repo, stats] of Object.entries(todayStats.repoStats)) {
@@ -89,7 +95,6 @@ export class MyMCP extends McpAgent {
         };
       }
     );
-
 
     this.server.tool(
       'github_commit_comparison',
