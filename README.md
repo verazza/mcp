@@ -6,7 +6,7 @@ I wanna create project using llm tools and publishing somewhere to see it. Such 
 ## Test
 :one: Open [PlayGlound AI](https://playground.ai.cloudflare.com/).  
 
-:two: Enter below url at status.
+:two: Enter below url as `MCP server URL`.
 ```
 https://verazza.work/sse
 ```
