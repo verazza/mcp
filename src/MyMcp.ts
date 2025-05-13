@@ -31,14 +31,15 @@ export class MyMCP extends McpAgent {
 
     this.server.tool(
       'github_commit_stats',
-      'GitHubユーザーの直近のコミット統計（追加・削除行数）を返す',
+      'GitHubユーザーの対象レポジトリでの直近のコミット統計（追加・削除行数）を返す',
       {
         username: z.string().describe('GitHubのユーザー名'),
         repository: z.string().describe('対象リポジトリ名'),
+        commitLimit: z.number().describe('最大コミット数制限(デフォルトは20件まで)(最大50件)')
       },
-      async ({ username, repository }) => {
-        const token = this.env.GITHUB_TOKEN; // 環境変数から取得
-        const { totalAdditions, totalDeletions } = await fetchCommitStats(username, repository, token);
+      async ({ username, repository, commitLimit }) => {
+        const token = this.env.GITHUB_TOKEN;
+        const { totalAdditions, totalDeletions } = await fetchCommitStats(username, repository, token, commitLimit);
         return {
           content: [
             { type: 'text', text: `追加行数: ${totalAdditions}, 削除行数: ${totalDeletions}` }
