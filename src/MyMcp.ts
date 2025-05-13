@@ -8,6 +8,13 @@ export class MyMCP extends McpAgent {
     version: '0.1.0',
   });
 
+  protected env: Env;
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    this.env = env;
+  }
+
   async init() {
     this.server.tool(
       'dice_roll',
