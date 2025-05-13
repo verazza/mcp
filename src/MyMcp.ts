@@ -50,7 +50,7 @@ export class MyMCP extends McpAgent {
 
     this.server.tool(
       'github_daily_commit_stats',
-      'GitHubユーザーの今日のコミット有無と統計を返します',
+      'GitHubユーザーの今日のコミット有無と統計を返す',
       {
         username: z.string().describe('GitHubのユーザー名'),
       },
@@ -62,22 +62,19 @@ export class MyMCP extends McpAgent {
         const weekAgo = new Date(todayStart);
         weekAgo.setDate(todayStart.getDate() - 7);
 
-        // ① 今日のコミット取得
-        const todayCommits = await fetchUserCommits(username, token, todayStart.toISOString());
+        const fetchedTodayEventsCommits = await fetchUserCommits(username, token, todayStart.toISOString());
         const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
-        // fetchUserCommits で取得後、さらにフィルタ
-        const trulyTodayCommits = todayCommits.filter(c => {
-          const commitDate = new Date(c.commit.author.date); // event.created_at を基準にしているのでこれを参照
-          return commitDate >= todayStart && commitDate <= todayEnd;
-        });
 
+        const trulyTodayCommits = fetchedTodayEventsCommits.filter(c => {
+          const commitEventDate = new Date(c.commit.author.date); // c.commit.author.date は event.created_at を格納
+          return commitEventDate >= todayStart && commitEventDate <= todayEnd;
+        });
 
         let message = '';
         if (trulyTodayCommits.length === 0) {
           message += `ユーザー ${username} は今日はまだコミットしていません。\n`;
         } else {
           message += `ユーザー ${username} は今日 ${trulyTodayCommits.length} 件のコミットをしました。\n`;
-
           const todayStats = await analyzeCommitStats(trulyTodayCommits, token);
           message += `追加行数: ${todayStats.totalAdditions}, 削除行数: ${todayStats.totalDeletions}\n`;
           message += `リポジトリ別:\n`;
@@ -86,10 +83,24 @@ export class MyMCP extends McpAgent {
           }
         }
 
-        // ② 直近1週間のコミット統計
-        const weekCommits = await fetchUserCommits(username, token, weekAgo.toISOString());
-        const weekStats = await analyzeCommitStats(weekCommits, token);
-        message += `\n直近7日間の合計: +${weekStats.totalAdditions}, -${weekStats.totalDeletions}`;
+        const weekStart = weekAgo;
+        const weekEnd = todayEnd;
+
+        // fetchUserCommitsはsince以降のイベント(最大300件など)からコミットエントリを返す
+        const fetchedWeekEventsCommits = await fetchUserCommits(username, token, weekStart.toISOString());
+
+        const trulyWeekCommits = fetchedWeekEventsCommits.filter(c => {
+          const commitEventDate = new Date(c.commit.author.date);
+          return commitEventDate >= weekStart && commitEventDate <= weekEnd;
+        });
+
+        if (trulyWeekCommits.length > 0) {
+          const weekStats = await analyzeCommitStats(trulyWeekCommits, token);
+          message += `\n直近7日間の合計: + ${weekStats.totalAdditions}, - ${weekStats.totalDeletions}`;
+          message += ` (コミット総数: ${trulyWeekCommits.length} 件)`;
+        } else {
+          message += `\n直近7日間のコミットはありませんでした。`;
+        }
 
         return {
           content: [{ type: 'text', text: message }]
