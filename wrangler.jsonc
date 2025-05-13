@@ -2,6 +2,9 @@
  * For more details on how to configure Wrangler, refer to:
  * https://developers.cloudflare.com/workers/wrangler/configuration/
  */
+/**
+ * "new_sqlite_classes" -> "new_classes"
+ */
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "mcp",
@@ -10,7 +13,8 @@
   "migrations": [
     {
       "new_sqlite_classes": [
-        "MyDurableObject"
+        "MyDurableObject",
+        "MyMCP"
       ],
       "tag": "v1"
     }
@@ -20,12 +24,19 @@
       {
         "class_name": "MyDurableObject",
         "name": "MY_DURABLE_OBJECT"
+      },
+      {
+        "class_name": "MyMCP",
+        "name": "MCP_OBJECT"
       }
     ]
   },
   "observability": {
     "enabled": true
-  }
+  },
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   /**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

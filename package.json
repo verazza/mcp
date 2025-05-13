@@ -1,35 +1,37 @@
 {
-	"name": "mcp",
-	"version": "0.0.0",
-	"description": "verazza first project with mcp server, connecting to ai tools",
-	"keywords": [
-		"mcp"
-	],
-	"homepage": "https://github.com/verazza/mcp#readme",
-	"bugs": {
-		"url": "https://github.com/verazza/mcp/issues"
-	},
-	"repository": {
-		"type": "git",
-		"url": "git+https://github.com/verazza/mcp.git"
-	},
-	"license": "MIT",
-	"author": "verazza",
-	"private": true,
-	"scripts": {
-		"deploy": "wrangler deploy",
-		"dev": "wrangler dev",
-		"start": "wrangler dev",
-		"cf-typegen": "wrangler types"
-	},
-	"devDependencies": {
-		"@cloudflare/workers-types": "^4.20250510.0",
-		"typescript": "^5.5.2",
-		"wrangler": "^4.14.4"
-	},
-	"dependencies": {
-		"@modelcontextprotocol/sdk": "^1.11.2",
-		"agents": "^0.0.84",
-		"zod": "^3.24.4"
-	}
+  "name": "mcp",
+  "version": "0.0.0",
+  "description": "verazza first project with mcp server, connecting to ai tools",
+  "keywords": [
+    "mcp"
+  ],
+  "homepage": "https://github.com/verazza/mcp#readme",
+  "bugs": {
+    "url": "https://github.com/verazza/mcp/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/verazza/mcp.git"
+  },
+  "license": "MIT",
+  "author": "verazza",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "start": "wrangler dev",
+    "cf-typegen": "wrangler types",
+    "inspector": "npx @modelcontextprotocol/inspector"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250510.0",
+    "typescript": "^5.5.2",
+    "wrangler": "^4.14.4"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.11.2",
+    "agents": "^0.0.84",
+    "zod": "^3.24.4"
+  }
 }
