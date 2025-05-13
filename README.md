@@ -10,7 +10,7 @@ I wanna create project using llm tools and publishing somewhere to see it. Such 
 ```
 https://verazza.work/sse
 ```
-:three: Connect and Enter any prompt
+:three: Connect and Enter any prompt.
 
 ## Deploy
 - cloudflare/workers
