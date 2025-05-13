@@ -106,27 +106,24 @@ export async function analyzeCommitStats(
   let totalDeletions = 0;
   const repoStats: Record<string, { additions: number; deletions: number }> = {};
 
-  // 各コミット詳細取得のPromiseを作成
   const commitDetailPromises = commits.map(commit =>
     fetch(commit.url, { headers })
       .then(async res => {
         if (!res.ok) {
-          console.error(`GitHub API error for ${commit.url}: ${res.status} ${await res.text()}`);
-          return null; // エラー時はnullを返す
+          console.error(`GitHub API error for ${commit.url}: ${res.status} ${await res.text()
+            } `);
+          return null;
         }
         return res.json() as Promise<CommitDetail>;
       })
-      .then(detail => ({ // 元のコミット情報（特にリポジトリ名）を一緒に返す
+      .then(detail => ({
         detail,
         repoName: commit.repository?.name ?? "unknown"
       }))
       .catch(error => {
-        console.error(`Workspace error for ${commit.url}:`, error);
-        return null; // ネットワークエラー等
       })
   );
 
-  // Promiseを並列で実行
   const results = await Promise.allSettled(commitDetailPromises);
 
   results.forEach(result => {
