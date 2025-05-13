@@ -14,24 +14,21 @@ export class MyDurableObject extends DurableObject<Env> {
 }
 
 export default {
-  async fetch(request, env, ctx): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname === '/sse' || url.pathname === '/sse/message') {
-      return MyMCP.serveSSE('/sse').fetch(request, env, ctx);
-    }
-
-    if (url.pathname === '/mcp') {
-      return MyMCP.serve('/mcp').fetch(request, env, ctx);
-    }
-
-    if (url.pathname === '/hello') {
-      const id: DurableObjectId = env.MY_DURABLE_OBJECT.idFromName("foo");
+    let id: DurableObjectId;
+    if (url.pathname.startsWith('/sse') || url.pathname.startsWith('/mcp')) {
+      id = env.MCP_OBJECT.idFromName("mcp-default-instance");
+      const stub = env.MCP_OBJECT.get(id);
+      return stub.fetch(request);
+    } else if (url.pathname === '/hello') {
+      id = env.MY_DURABLE_OBJECT.idFromName("foo");
       const stub = env.MY_DURABLE_OBJECT.get(id);
       const greeting = await stub.sayHello("world");
       return new Response(greeting);
+    } else {
+      return new Response('Not found', { status: 404 });
     }
-
-    return new Response('Not found', { status: 404 });
   },
 } satisfies ExportedHandler<Env>;

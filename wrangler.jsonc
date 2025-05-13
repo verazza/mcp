@@ -12,11 +12,10 @@
   "compatibility_date": "2025-05-10",
   "migrations": [
     {
-      "new_sqlite_classes": [
-        "MyDurableObject",
+      "new_classes": [
         "MyMCP"
       ],
-      "tag": "v1"
+      "tag": "v2"
     }
   ],
   "durable_objects": {
