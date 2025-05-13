@@ -19,7 +19,7 @@ export class MyMCP extends McpAgent {
   async init() {
     this.server.tool(
       'dice_roll',
-      'サイコロを振った結果を返します',
+      'サイコロを振った結果を返す',
       { sides: z.number().min(1).max(100).default(6).describe('サイコロの面の数') },
       async ({ sides }) => {
         const result = Math.floor(Math.random() * sides) + 1;
