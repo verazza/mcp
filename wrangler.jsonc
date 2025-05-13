@@ -12,7 +12,8 @@
   "compatibility_date": "2025-05-10",
   "migrations": [
     {
-      "new_classes": [
+      "new_sqlite_classes": [
+        "MyDurableObject",
         "MyMCP"
       ],
       "tag": "v2"
