@@ -22,29 +22,28 @@ const corsHeaders: { [key: string]: string } = {
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    // const id = env.MCP_OBJECT.idFromName("mcp-default-instance");
+    // const stub = env.MCP_OBJECT.get(id);
+    let response: Response;
 
     if (request.method === 'OPTIONS') {
-      return new Response(null, {
-        headers: corsHeaders,
-      });
+      return new Response(null, { headers: corsHeaders });
     }
 
-    let response: Response;
     if (url.pathname.startsWith('/sse')) {
+      console.log("Handling /sse request...");
       response = await MyMCP.serveSSE('/sse').fetch(request, env, ctx);
     } else if (url.pathname === '/mcp') {
-      response = await MyMCP.serve('/mcp').fetch(request, env, ctx); // Streamable HTTP
+      response = await MyMCP.serve('/mcp').fetch(request, env, ctx);
     } else if (url.pathname === '/hello') {
-      let id: DurableObjectId;
-      id = env.MY_DURABLE_OBJECT.idFromName("foo");
-      const stub = env.MY_DURABLE_OBJECT.get(id);
-      const greeting = await stub.sayHello("world");
+      const helloId: DurableObjectId = env.MY_DURABLE_OBJECT.idFromName("foo");
+      const helloStub = env.MY_DURABLE_OBJECT.get(helloId);
+      const greeting = await helloStub.sayHello("world");
       response = new Response(greeting);
     } else {
       response = new Response('Not found', { status: 404 });
     }
 
-    // giving cors header
     for (const key in corsHeaders) {
       response.headers.set(key, corsHeaders[key]);
     }

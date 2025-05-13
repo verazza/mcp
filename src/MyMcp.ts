@@ -21,4 +21,8 @@ export class MyMCP extends McpAgent {
       }
     );
   }
+
+  onStateUpdate(state: any) {
+    console.log({ stateUpdate: state });
+  }
 }

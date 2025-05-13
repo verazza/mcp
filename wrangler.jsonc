@@ -16,7 +16,7 @@
         "MyDurableObject",
         "MyMCP"
       ],
-      "tag": "v2"
+      "tag": "v3"
     }
   ],
   "durable_objects": {
