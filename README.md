@@ -13,7 +13,7 @@ https://verazza.work/sse
 :three: Connect and Enter any prompt.
 
 ## Deploy
-- cloudflare/workers
+- cloudflare/workers  
 [https://verazza.work/](https://verazza.work/)
 
 ## License
