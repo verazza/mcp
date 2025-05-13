@@ -23,69 +23,96 @@ interface CommitDetail {
 export async function fetchUserCommits(
   username: string,
   token: string,
-  sinceISO?: string
+  sinceISO?: string,
+  maxPages: number = 3 // GitHub Events APIの一般的な上限を考慮 (1ページ100件 x 3ページ = 300イベント)
 ): Promise<Commit[]> {
-  const headers = {
-    Authorization: `token ${token}`,
-    Accept: "application/vnd.github.v3+json",
-    "User-Agent": "MyMCP-Agent"
-  };
+  const allCollectedCommits: Commit[] = [];
+  let currentPage = 1;
+  let nextUrl: string | null = null; // 次のページを取得するためのURL
 
-  const searchParams = new URLSearchParams({
-    per_page: "100",
-  });
+  console.log(`Workspaceing events for ${username} (max ${maxPages} pages). Initial since: ${sinceISO || 'None'}`);
 
-  if (sinceISO) {
-    searchParams.set("since", sinceISO);
-  }
+  // URLを構築するための基準となるベースURLと検索パラメータ
+  let baseUrl = `${GITHUB_API_BASE}/users/${username}/events/public`;
 
-  const res = await fetch(`${GITHUB_API_BASE}/users/${username}/events/public?${searchParams}`, {
-    headers
-  });
+  do {
+    let currentFetchUrl: string;
+    const searchParams = new URLSearchParams({ per_page: "100" }); // 常に100件取得
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`GitHub events API error: ${res.status} ${res.statusText}\n${text}`);
-  }
-
-  console.log(`Workspaceing events for ${username} since ${sinceISO} with params: ${searchParams.toString()}`);
-  const events = (await res.json()) as any[];
-  console.log(`Found ${events.length} events from API.`);
-
-  const commits: Commit[] = [];
-
-  // PushEvent のみ抽出し、各コミットのリポジトリURLへ変換
-  // for (const event of events) {
-  //   if (event.type === "PushEvent") {
-  //     const repoName = event.repo.name.split("/")[1];
-  //     for (const commit of event.payload.commits) {
-  //       commits.push({
-  //         ...commit,
-  //         repository: { name: repoName },
-  //         commit: {
-  //           author: {
-  //             date: event.created_at
-  //           }
-  //         }
-  //       });
-  //     }
-  //   }
-  // }
-
-  events.forEach((event, index) => {
-    // 正しいテンプレートリテラルの使用例
-    console.log(`  Event ${index + 1}: type=${event.type}, created_at=${event.created_at}, repo=${event.repo.name}`);
-    if (event.type === "PushEvent" && event.payload && event.payload.commits) {
-      console.log(`    PushEvent contains ${event.payload.commits.length} commits.`);
-      // オプション: さらに詳細なコミット情報をログ出力する場合
-      // event.payload.commits.forEach((commit: any, c_index: number) => {
-      //   const commitAuthorDate = commit.author && commit.author.date ? commit.author.date : 'N/A';
-      //   console.log(`      Commit ${c_index + 1}: sha=${commit.sha}, message=${commit.message}, author_date=${commitAuthorDate}`);
-      // });
+    if (currentPage === 1) {
+      // 最初のページのリクエストの場合
+      if (sinceISO) {
+        searchParams.set("since", sinceISO);
+      }
+      currentFetchUrl = `${baseUrl}?${searchParams.toString()}`;
+    } else if (nextUrl) {
+      // 2ページ目以降は、Linkヘッダーから取得したURLを使用
+      currentFetchUrl = nextUrl;
+    } else {
+      // 次のページがなく、最初のページでもない場合はループを抜ける
+      break;
     }
-  });
 
-  return commits;
+    console.log(`  Fetching page ${currentPage}: ${currentFetchUrl}`);
+
+    const headers = {
+      Authorization: `token ${token}`,
+      Accept: "application/vnd.github.v3+json",
+      "User-Agent": `${USER_AGENT}-fetchUserCommits`
+    };
+
+    const res = await fetch(currentFetchUrl, { headers });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error(`  GitHub events API error on page ${currentPage} (${currentFetchUrl}): ${res.status} ${res.statusText}\\n${text}`);
+      break;
+    }
+
+    const events = (await res.json()) as any[];
+    console.log(`    Page ${currentPage}: Found ${events.length} events.`);
+
+    if (events.length === 0) {
+      break;
+    }
+
+    for (const event of events) {
+      if (event.type === "PushEvent" && event.payload && event.payload.commits) {
+        const repoName = event.repo.name.split("/")[1]; // 'owner/repo' から 'repo' を抽出
+        for (const ghCommit of event.payload.commits) { // payload内の各コミット
+          allCollectedCommits.push({
+            url: ghCommit.url,
+            commit: {
+              author: {
+                // PushEventの発生日時をコミットの日付情報として使用。あとでソート用に使う
+                date: event.created_at
+              }
+            },
+            repository: { name: repoName },
+            // 必要であれば、ghCommitから他の情報 (例: sha, message) もCommit型に追加
+          });
+        }
+      }
+    }
+
+    // 次のページのURLをLinkヘッダーから取得
+    const linkHeader = res.headers.get('Link');
+    nextUrl = null; // 次のページがない場合に備えてリセット
+    if (linkHeader) {
+      const links = linkHeader.split(',');
+      const nextLinkEntry = links.find(link => link.includes('rel="next"'));
+      if (nextLinkEntry) {
+        const match = nextLinkEntry.match(/<([^>]+)>/);
+        if (match) {
+          nextUrl = match[1];
+        }
+      }
+    }
+    currentPage++;
+  } while (nextUrl && currentPage <= maxPages); // 次のページがあり、最大ページ数に達していない間ループ
+
+  console.log(`  Finished fetching events. Total collected commit entries (from PushEvents): ${allCollectedCommits.length}`);
+  return allCollectedCommits;
 }
 
 export async function analyzeCommitStats(
