@@ -1,4 +1,5 @@
 const GITHUB_API_BASE = "https://api.github.com";
+const USER_AGENT = "MyMCP-Agent";
 
 interface Commit {
   commit: {
@@ -98,7 +99,7 @@ export async function analyzeCommitStats(
   const headers = {
     Authorization: `token ${token}`,
     Accept: "application/vnd.github.v3+json",
-    "User-Agent": "MyMCP-Agent" // User-Agentはご自身のものに適宜変更してください
+    "User-Agent": `${USER_AGENT}-AnalyzerCommitStats`
   };
 
   let totalAdditions = 0;
@@ -157,9 +158,9 @@ export async function fetchCommitStats(
   commitLimit: number = 10 // デフォルト値
 ): Promise<{ totalAdditions: number; totalDeletions: number }> {
   const headers = {
-    Authorization: `token ${token}`,
+    Authorization: `token ${token} `,
     Accept: 'application/vnd.github.v3+json',
-    'User-Agent': 'my-mcp-agent',
+    'User-Agent': `${USER_AGENT}-fetchCommitStats`,
   };
 
   const commitsRes = await fetch(
