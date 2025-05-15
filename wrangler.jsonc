@@ -52,9 +52,9 @@
 	 * Environment Variables
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
 	 */
-  "vars": {
-    "GITHUB_TOKEN": "ghp_XXXXXXXXXXXXXXXXXXXXXXXXX"
-  },
+  // "vars": {
+  //   "GITHUB_TOKEN": "ghp_XXXXXXXXXXXXXXXXXXXXXXXXX"
+  // },
   /**
 	 * Note: Use secrets to store sensitive data.
 	 * https://developers.cloudflare.com/workers/configuration/secrets/
