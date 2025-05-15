@@ -1,7 +1,8 @@
 import { McpAgent } from 'agents/mcp';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import { fetchCommitStats, fetchUserCommits, analyzeCommitStats } from './github/commitStats.js';
+import { fetchCommitStats } from './api/github/repos/commit.js';
+import { searchUserCommits, analyzeSearchedCommits } from './api/github/search/commit.js';
 
 export class MyMCP extends McpAgent {
   server = new McpServer({
@@ -30,7 +31,7 @@ export class MyMCP extends McpAgent {
     );
 
     this.server.tool(
-      'github_commit_stats',
+      'github_repo_commit_stats',
       'GitHubユーザーの対象レポジトリでの直近のコミット統計（追加・削除行数）を返す',
       {
         username: z.string().describe('GitHubのユーザー名'),
@@ -51,31 +52,26 @@ export class MyMCP extends McpAgent {
     this.server.tool(
       'github_daily_commit_stats',
       'GitHubユーザーの今日のコミット有無と統計を返す',
-      {
-        username: z.string().describe('GitHubのユーザー名'),
-      },
+      { username: z.string().describe('GitHubのユーザー名') },
       async ({ username }) => {
         const token = this.env.GITHUB_TOKEN;
 
         const today = new Date();
         const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        const weekAgo = new Date(todayStart);
-        weekAgo.setDate(todayStart.getDate() - 7);
-
-        const fetchedTodayEventsCommits = await fetchUserCommits(username, token, todayStart.toISOString());
         const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
-        const trulyTodayCommits = fetchedTodayEventsCommits.filter(c => {
-          const commitEventDate = new Date(c.commit.author.date); // c.commit.author.date は event.created_at を格納
-          return commitEventDate >= todayStart && commitEventDate <= todayEnd;
-        });
+        const weekAgoStart = new Date(todayStart);
+        weekAgoStart.setDate(todayStart.getDate() - 7);
+
+        console.log(`[github_daily_commit_stats] Searching today's commits for ${username} from ${todayStart.toISOString()} to ${todayEnd.toISOString()}`);
+        const todaySearchedCommits = await searchUserCommits(username, token, todayStart.toISOString(), todayEnd.toISOString());
 
         let message = '';
-        if (trulyTodayCommits.length === 0) {
+        if (todaySearchedCommits.length === 0) {
           message += `ユーザー ${username} は今日はまだコミットしていません。\n`;
         } else {
-          message += `ユーザー ${username} は今日 ${trulyTodayCommits.length} 件のコミットをしました。\n`;
-          const todayStats = await analyzeCommitStats(trulyTodayCommits, token);
+          message += `ユーザー ${username} は今日 ${todaySearchedCommits.length} 件のコミットをしました。\n`;
+          const todayStats = await analyzeSearchedCommits(todaySearchedCommits, token);
           message += `追加行数: ${todayStats.totalAdditions}, 削除行数: ${todayStats.totalDeletions}\n`;
           message += `リポジトリ別:\n`;
           for (const [repo, stats] of Object.entries(todayStats.repoStats)) {
@@ -83,67 +79,66 @@ export class MyMCP extends McpAgent {
           }
         }
 
-        const weekStart = weekAgo;
-        const weekEnd = todayEnd;
+        console.log(`[github_daily_commit_stats] Searching week's commits for ${username} from ${weekAgoStart.toISOString()} to ${todayEnd.toISOString()}`);
+        const weekSearchedCommits = await searchUserCommits(username, token, weekAgoStart.toISOString(), todayEnd.toISOString());
 
-        // fetchUserCommitsはsince以降のイベント(最大300件など)からコミットエントリを返す
-        const fetchedWeekEventsCommits = await fetchUserCommits(username, token, weekStart.toISOString());
-
-        const trulyWeekCommits = fetchedWeekEventsCommits.filter(c => {
-          const commitEventDate = new Date(c.commit.author.date);
-          return commitEventDate >= weekStart && commitEventDate <= weekEnd;
-        });
-
-        if (trulyWeekCommits.length > 0) {
-          const weekStats = await analyzeCommitStats(trulyWeekCommits, token);
+        if (weekSearchedCommits.length > 0) {
+          const weekStats = await analyzeSearchedCommits(weekSearchedCommits, token);
           message += `\n直近7日間の合計: + ${weekStats.totalAdditions}, - ${weekStats.totalDeletions}`;
-          message += ` (コミット総数: ${trulyWeekCommits.length} 件)`;
+          message += ` (コミット総数: ${weekSearchedCommits.length} 件)`;
         } else {
           message += `\n直近7日間のコミットはありませんでした。`;
         }
 
-        return {
-          content: [{ type: 'text', text: message }]
-        };
+        return { content: [{ type: 'text', text: message }] };
       }
     );
 
     this.server.tool(
       'github_commit_comparison',
       'GitHubユーザーの今日の活動を過去7日平均と比較',
-      {
-        username: z.string().describe('GitHubのユーザー名'),
-      },
+      { username: z.string().describe('GitHubのユーザー名') },
       async ({ username }) => {
         const token = this.env.GITHUB_TOKEN;
-
+        // ... (日付設定は同様)
         const today = new Date();
         const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        const weekAgo = new Date(todayStart);
-        weekAgo.setDate(todayStart.getDate() - 7);
+        const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+        const weekAgoStart = new Date(todayStart);
+        weekAgoStart.setDate(todayStart.getDate() - 7);
 
-        const todayCommits = await fetchUserCommits(username, token, todayStart.toISOString());
-        const weekCommits = await fetchUserCommits(username, token, weekAgo.toISOString());
+        console.log(`[github_commit_comparison] Searching today's commits for ${username}`);
+        const todaySearchedCommits = await searchUserCommits(username, token, todayStart.toISOString(), todayEnd.toISOString());
 
-        const todayStats = await analyzeCommitStats(todayCommits, token);
-        const weekStats = await analyzeCommitStats(weekCommits, token);
+        console.log(`[github_commit_comparison] Searching week's commits for ${username}`);
+        const weekSearchedCommits = await searchUserCommits(username, token, weekAgoStart.toISOString(), todayEnd.toISOString());
 
-        const averageAdditions = Math.round(weekStats.totalAdditions / 7);
-        const averageDeletions = Math.round(weekStats.totalDeletions / 7);
+        let todayStats = { totalAdditions: 0, totalDeletions: 0, repoStats: {} };
+        if (todaySearchedCommits.length > 0) {
+          console.log(`[github_commit_comparison] Analyzing ${todaySearchedCommits.length} today's commits.`);
+          todayStats = await analyzeSearchedCommits(todaySearchedCommits, token);
+        }
+
+        let weekStats = { totalAdditions: 0, totalDeletions: 0, repoStats: {} };
+        if (weekSearchedCommits.length > 0) {
+          console.log(`[github_commit_comparison] Analyzing ${weekSearchedCommits.length} week's commits.`);
+          weekStats = await analyzeSearchedCommits(weekSearchedCommits, token);
+        }
+
+        const averageAdditions = weekSearchedCommits.length > 0 ? Math.round(weekStats.totalAdditions / 7) : 0; // 0除算を避ける
+        const averageDeletions = weekSearchedCommits.length > 0 ? Math.round(weekStats.totalDeletions / 7) : 0; // 0除算を避ける
 
         const additionsTrend = todayStats.totalAdditions > averageAdditions ? '増加傾向 📈' :
-          todayStats.totalAdditions < averageAdditions ? '減少傾向 📉' : '同等 ⚖️';
+          (todayStats.totalAdditions < averageAdditions ? '減少傾向 📉' : '同等 ⚖️');
 
         const deletionsTrend = todayStats.totalDeletions > averageDeletions ? '増加傾向 📈' :
-          todayStats.totalDeletions < averageDeletions ? '減少傾向 📉' : '同等 ⚖️';
+          (todayStats.totalDeletions < averageDeletions ? '減少傾向 📉' : '同等 ⚖️');
 
         let message = `📊 **${username} の今日のコミット活動**\n`;
-        message += `- 追加行数: ${todayStats.totalAdditions}（週平均: ${averageAdditions}） → ${additionsTrend}\n`;
-        message += `- 削除行数: ${todayStats.totalDeletions}（週平均: ${averageDeletions}） → ${deletionsTrend}`;
+        message += `- 追加行数: ${todayStats.totalAdditions}（過去7日平均: ${averageAdditions}）→ ${additionsTrend}\n`;
+        message += `- 削除行数: ${todayStats.totalDeletions}（過去7日平均: ${averageDeletions}）→ ${deletionsTrend}`;
 
-        return {
-          content: [{ type: 'text', text: message }]
-        };
+        return { content: [{ type: 'text', text: message }] };
       }
     );
   }
